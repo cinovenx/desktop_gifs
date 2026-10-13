@@ -17,6 +17,7 @@
 </p>
 
 <p align="center">
+  <a href="#tampermonkey">Tampermonkey</a> ·
   <a href="#install">Install</a> ·
   <a href="#use">Use</a> ·
   <a href="#troubleshooting">Troubleshooting</a> ·
@@ -24,6 +25,12 @@
   <a href="#how-it-works">How it works</a> ·
   <a href="#privacy">Privacy</a>
 </p>
+
+> [!NOTE]
+> **Tampermonkey fork by [cinovenx](https://github.com/cinovenx).**
+> Upstream extension by [rayytor](https://github.com/rayytor/desktop_gifs) (GPL-3.0).
+> This fork adds a single-file userscript [`desktop-gifs.user.js`](desktop-gifs.user.js) — no extension install needed.
+> The `extension/` folder is untouched and still works as before.
 
 <p align="center">
   <img src="screenshots/picker.png" width="720" alt="The GIF picker open above a comment box, showing search results for &quot;cat&quot;, one of them starred as a favorite">
@@ -42,6 +49,26 @@ YouTube's mobile app can attach a GIF to a comment; the desktop site has no butt
 - **Nothing to set up.** No account, no API key, no tracking.
 
 <sub>The screenshots show the extension's own interface on a test page that stands in for YouTube's comment box.</sub>
+
+## Tampermonkey
+
+No extension install, no developer mode. Needs the
+[Tampermonkey](https://www.tampermonkey.net/) browser extension.
+
+1. Open this raw file and confirm the Tampermonkey install prompt:
+   [`desktop-gifs.user.js`](https://raw.githubusercontent.com/cinovenx/desktop_gifs/main/desktop-gifs.user.js)
+   (alternatively: [`desktop-gifs.user.js`](desktop-gifs.user.js) in this repo → **Raw** → **Install**).
+2. On install, allow access to `www.youtube.com`, `tenor.com` and `tenor.googleapis.com` when Tampermonkey asks (`@connect`).
+3. Open any YouTube video — the **GIF** button appears next to the emoji button, no refresh of other tabs needed beyond one reload.
+
+Notes:
+
+- Single file, no build step: `content.js` + `main.js` + `sw.js` (via `GM_xmlhttpRequest`) + `content.css` (via `GM_addStyle`).
+- Page hook, two modes: `<script>` injection into page world at `document-start` first; if the page's nonce-CSP silently drops inline scripts (YouTube does), the script patches `unsafeWindow.fetch` directly on first GIF click (needs the `unsafeWindow` grant). Both modes share one install flag, so there is never a double wrapper.
+- Favorites are stored with `GM_setValue` (mirrored to `localStorage`), synced across tabs via `GM_addValueChangeListener`.
+- Auto-update: `@updateURL`/`@downloadURL` point at `raw.githubusercontent.com/cinovenx/desktop_gifs/main/desktop-gifs.user.js`.
+- Do not run the extension and the userscript at the same time — both use the same `gcfyLoaded` guard, the second one stays idle, but keeping one avoids confusion.
+- Picker shows "No cross-origin request API…" or the console shows CORS errors: the script was installed without its `@grant`/`@connect` permissions (e.g. pasted as a snippet instead of installed from the `.user.js` file). Reinstall from the raw `.user.js` link above in Tampermonkey/Violentmonkey and accept the permission prompt. The error names the detected script manager in parentheses — include it when reporting.
 
 ## Install
 
@@ -132,6 +159,7 @@ When you pick a GIF, the content script adds a one-time marker to the comment bo
 | `src/content.js`, `src/content.css` | YouTube page, isolated world | Adds the GIF button and the picker |
 | `src/main.js` | YouTube page, main world | Rewrites the comment request so it carries the GIF |
 | `src/sw.js` | Service worker (background script in Firefox) | Fetches G-rated search results from Tenor; on install, adds the two scripts above to YouTube tabs that are already open |
+| `desktop-gifs.user.js` (this fork) | Tampermonkey sandbox + page `<script>` or `unsafeWindow` patch | Same three jobs in one file: UI inline, `main.js` as injected page script with `unsafeWindow.fetch` fallback, `sw.js` via `GM_xmlhttpRequest` |
 
 There is no build step and there are no dependencies: the `extension` folder is the extension. `python3 tools/package.py` writes the two release ZIPs, which are that folder with the other browser's background key taken out of the manifest.
 
@@ -145,6 +173,6 @@ There is no build step and there are no dependencies: the `extension` folder is 
 
 ## License
 
-Copyright (C) 2026 rayytor
+Copyright (C) 2026 rayytor (original extension); Tampermonkey port by cinovenx.
 
 This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 3. It is distributed without any warranty. See [LICENSE](LICENSE).
